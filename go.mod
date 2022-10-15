@@ -1,4 +1,4 @@
-module github.com/alexsatch/ddd/specs
+module github.com/alexsatch/go-specs
 
 go 1.18
 

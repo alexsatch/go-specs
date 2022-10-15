@@ -4,62 +4,77 @@ import (
 	"fmt"
 )
 
+// Spec defines an interface that enables a fluent API
+// for construct specifications against T type.
+//
+// Each specification is immutable, and its API can be used
+// to construct arbitrary trees of expressions that
+// evaluate to a boolean value.
 type Spec[T any] interface {
 	fmt.Stringer
-	Eval(t T) bool
 
+	// Eval evaluates a given specification against a value of type T.
+	Eval(value T) bool
+
+	// And constructs a new specification, which evaluates to true iff
+	// when both this and other specification evaluate to true.
 	And(other Spec[T]) Spec[T]
-	AndFunc(other Func[T]) Spec[T]
 
+	// AndFunc constructs a new specification, which evaluates to true iff
+	// when both this and other specification evaluate to true.
+	AndFunc(other Predicate[T]) Spec[T]
+
+	// AndNot constructs a new specification, which will be true iff
+	// this specification evaluates to true and
+	// other specification is false.
 	AndNot(other Spec[T]) Spec[T]
-	AndNotFunc(other Func[T]) Spec[T]
 
+	// AndNotFunc constructs a new specification, which will be true iff
+	// this specification evaluates to true and
+	// other specification is false.
+	AndNotFunc(other Predicate[T]) Spec[T]
+
+	// Not constructs a new specification that is a negation of this specification.
 	Not() Spec[T]
 
+	// Or constructs a new specification, which evaluates to true iff
+	// when this or other specification evaluate to true.
 	Or(other Spec[T]) Spec[T]
-	OrFunc(other Func[T]) Spec[T]
 
+	// OrFunc constructs a new specification, which evaluates to true iff
+	// when this or other specification evaluate to true.
+	OrFunc(other Predicate[T]) Spec[T]
+
+	// OrNot constructs a new specification, which evaluates to true iff
+	// when this specification evaluates true or other specification evaluates to false.
 	OrNot(other Spec[T]) Spec[T]
-	OrNotFunc(other Func[T]) Spec[T]
+
+	// OrNotFunc constructs a new specification, which evaluates to true iff
+	// when this specification evaluates true or other specification evaluates to false.
+	OrNotFunc(other Predicate[T]) Spec[T]
 }
 
-type Func[T any] func(t T) bool
+// Predicate defines a type for a predicate on T.
+type Predicate[T any] func(t T) bool
 
-type SpecFunc[T any] struct {
-	name string
-	fn   Func[T]
+// New creates a new specification from a given predicate.
+// If eval is nil, Nil specification is returned.
+func New[T any](fn Predicate[T]) Spec[T] {
+	if fn == nil {
+		return Nil[T]()
+	}
+
+	return predicateSpec[T]{name: nameOfFunc(fn), eval: fn}
 }
 
-func (sf SpecFunc[T]) And(other Spec[T]) Spec[T]        { return All[T](sf, other) }
-func (sf SpecFunc[T]) AndFunc(other Func[T]) Spec[T]    { return All[T](sf, New[T](other)) }
-func (sf SpecFunc[T]) AndNot(other Spec[T]) Spec[T]     { return All[T](sf, Not[T](other)) }
-func (sf SpecFunc[T]) AndNotFunc(other Func[T]) Spec[T] { return All[T](sf, Not[T](New[T](other))) }
-func (sf SpecFunc[T]) Not() Spec[T]                     { return Not[T](sf) }
-func (sf SpecFunc[T]) Or(other Spec[T]) Spec[T]         { return Any[T](sf, other) }
-func (sf SpecFunc[T]) OrFunc(other Func[T]) Spec[T]     { return Any[T](sf, New[T](other)) }
-func (sf SpecFunc[T]) OrNot(other Spec[T]) Spec[T]      { return Any[T](sf, Not[T](other)) }
-func (sf SpecFunc[T]) OrNotFunc(other Func[T]) Spec[T]  { return Any[T](sf, Not[T](New[T](other))) }
-func (sf SpecFunc[T]) Eval(t T) bool                    { return sf.fn(t) }
-func (sf SpecFunc[T]) String() string                   { return sf.name }
+func NewNamed[T any](name string, fn Predicate[T]) Spec[T] {
+	if name == "" {
+		panic("empty name is not permitted for specs.NewNamed()")
+	}
 
-type nilSpec[T any] struct{}
-
-func (ns nilSpec[T]) And(other Spec[T]) Spec[T]        { return other }
-func (ns nilSpec[T]) AndFunc(other Func[T]) Spec[T]    { return New[T](other) }
-func (ns nilSpec[T]) AndNot(other Spec[T]) Spec[T]     { return Not[T](other) }
-func (ns nilSpec[T]) AndNotFunc(other Func[T]) Spec[T] { return Not[T](New[T](other)) }
-func (ns nilSpec[T]) Not() Spec[T]                     { return ns /* no conditions always eval to true */ }
-func (ns nilSpec[T]) Or(other Spec[T]) Spec[T]         { return Any[T](ns, other) }
-func (ns nilSpec[T]) OrFunc(other Func[T]) Spec[T]     { return Any[T](ns, New[T](other)) }
-func (ns nilSpec[T]) OrNot(other Spec[T]) Spec[T]      { return Any[T](ns, Not[T](other)) }
-func (ns nilSpec[T]) OrNotFunc(other Func[T]) Spec[T]  { return Any[T](ns, Not[T](New[T](other))) }
-func (ns nilSpec[T]) Eval(_ T) bool                    { return true }
-func (ns nilSpec[T]) String() string                   { return "nil" }
-
-func New[T any](fn Func[T]) Spec[T] {
 	if fn == nil {
 		return nilSpec[T]{}
 	}
 
-	return SpecFunc[T]{name: nameOfFunc(fn), fn: fn}
+	return predicateSpec[T]{name: name, eval: fn}
 }

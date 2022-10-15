@@ -1,7 +1,7 @@
 package specs_test
 
 import (
-	"github.com/alexsatch/ddd/specs"
+	"github.com/alexsatch/go-specs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -47,7 +47,7 @@ func TestEval(t *testing.T) {
 		var (
 			isLegalAge = specs.New(Employee.IsLegalAge)
 			isMale     = specs.New(Employee.IsMale)
-			isFemale   = specs.New(func(e Employee) bool { return e.Gender == Female })
+			isFemale   = specs.NewNamed("isFemale", func(e Employee) bool { return e.Gender == Female })
 		)
 
 		require.True(t, isLegalAge.Eval(bob))
@@ -101,17 +101,22 @@ func TestString(t *testing.T) {
 
 	t.Run("anonymous", func(t *testing.T) {
 		sp := specs.New(func(e Employee) bool { return e.Gender == Female })
-		require.Regexp(t, `<anonymous: (.*)/ddd/specs/spec_test.go:\d+>`, sp.String())
+		require.Regexp(t, `<anonymous: (.*)/spec_test.go:\d+>`, sp.String())
 	})
 
 	t.Run("is30", func(t *testing.T) {
 		sp := specs.New(is30)
-		require.Equal(t, `github.com/alexsatch/ddd/specs_test.is30`, sp.String())
+		require.Equal(t, `github.com/alexsatch/go-specs_test.is30`, sp.String())
+	})
+
+	t.Run("named", func(t *testing.T) {
+		sp := specs.NewNamed("hello", func(t Employee) bool { return true })
+		require.Equal(t, `hello`, sp.String())
 	})
 
 	t.Run("other type", func(t *testing.T) {
 		sp := specs.New(EmployeeService{}.IsAllowed)
-		require.Equal(t, `github.com/alexsatch/ddd/specs_test.EmployeeService.IsAllowed`, sp.String())
+		require.Equal(t, `github.com/alexsatch/go-specs_test.EmployeeService.IsAllowed`, sp.String())
 	})
 
 	t.Run("not", func(t *testing.T) {

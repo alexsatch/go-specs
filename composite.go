@@ -1,73 +1,71 @@
 package specs
 
-import "strings"
+import (
+	"strings"
+)
 
-func Not[T any](spec Spec[T]) Spec[T]     { return newComposite[T]("not", notAggregate[T], spec) }
-func All[T any](specs ...Spec[T]) Spec[T] { return newComposite[T]("all", allAggregate[T], specs...) }
-func Any[T any](specs ...Spec[T]) Spec[T] { return newComposite[T]("any", anyAggregate[T], specs...) }
+// Not creates a negation of a given spec.
+func Not[T any](spec Spec[T]) Spec[T] {
+	return newCompositeSpec[T]("not", combineNot[T], spec)
+}
 
-func newComposite[T any](
+// All creates a new spec that returns true whenever all of its child specs are true.
+func All[T any](specs ...Spec[T]) Spec[T] {
+	return newCompositeSpec[T]("all", combineAll[T], specs...)
+}
+
+// Any creates a new spec that returns true whenever any of its child specs are true.
+func Any[T any](specs ...Spec[T]) Spec[T] {
+	return newCompositeSpec[T]("any", combineAny[T], specs...)
+}
+
+// newCompositeSpec returns a new compositeSpec spec.
+// If list of child specs is empty, it returns a Nil spec.
+func newCompositeSpec[T any](
 	name string,
-	aggregate func(ss ...Spec[T]) func(t T) bool,
-	args ...Spec[T],
+	combine func(childSpecs ...Spec[T]) Predicate[T],
+	childSpecs ...Spec[T],
 ) Spec[T] {
-	if len(args) == 0 {
-		return nilSpec[T]{}
+	if len(childSpecs) == 0 {
+		return Nil[T]()
 	}
 
-	return composite[T]{
-		name:    name,
-		args:    args,
-		satisfy: aggregate(args...),
+	return predicateSpec[T]{
+		name: compositeSpecName[T](name, childSpecs...),
+		eval: combine(childSpecs...),
 	}
 }
 
-type composite[T any] struct {
-	name    string
-	args    []Spec[T]
-	satisfy func(t T) bool
-}
-
-func (c composite[T]) And(other Spec[T]) Spec[T]        { return All[T](c, other) }
-func (c composite[T]) AndFunc(other Func[T]) Spec[T]    { return All[T](c, New[T](other)) }
-func (c composite[T]) AndNot(other Spec[T]) Spec[T]     { return All[T](c, Not[T](other)) }
-func (c composite[T]) AndNotFunc(other Func[T]) Spec[T] { return All[T](c, Not[T](New[T](other))) }
-func (c composite[T]) Not() Spec[T]                     { return Not[T](c) }
-func (c composite[T]) Or(other Spec[T]) Spec[T]         { return Any[T](c, other) }
-func (c composite[T]) OrFunc(other Func[T]) Spec[T]     { return Any[T](c, New[T](other)) }
-func (c composite[T]) OrNot(other Spec[T]) Spec[T]      { return Any[T](c, Not[T](other)) }
-func (c composite[T]) OrNotFunc(other Func[T]) Spec[T]  { return Any[T](c, Not[T](New[T](other))) }
-
-func (c composite[T]) Eval(t T) bool { return c.satisfy(t) }
-func (c composite[T]) String() string {
+func compositeSpecName[T any](name string, childSpecs ...Spec[T]) string {
 	sb := strings.Builder{}
-	_, _ = sb.WriteString(c.name)
-	sb.WriteString("(")
-	for i, arg := range c.args {
+	_, _ = sb.WriteString(name)
+
+	_, _ = sb.WriteString("(")
+	for i, arg := range childSpecs {
 		if i != 0 {
-			sb.WriteString(", ")
+			_, _ = sb.WriteString(", ")
 		}
 
-		sb.WriteString(arg.String())
+		_, _ = sb.WriteString(arg.String())
 	}
+	_, _ = sb.WriteString(")")
 
-	sb.WriteString(")")
 	return sb.String()
 }
 
-func notAggregate[T any](ss ...Spec[T]) func(t T) bool {
-	panicIfEmpty(ss)
+func combineNot[T any](childSpecs ...Spec[T]) Predicate[T] {
+	panicOnEmpty(childSpecs)
 
 	return func(t T) bool {
-		return !ss[0].Eval(t)
+		return !childSpecs[0].Eval(t)
 	}
 }
 
-func allAggregate[T any](ss ...Spec[T]) func(t T) bool {
-	panicIfEmpty(ss)
+func combineAll[T any](childSpecs ...Spec[T]) Predicate[T] {
+	panicOnEmpty(childSpecs)
 
 	return func(t T) bool {
-		for _, s := range ss {
+		for _, s := range childSpecs {
 			if !s.Eval(t) {
 				return false
 			}
@@ -77,11 +75,11 @@ func allAggregate[T any](ss ...Spec[T]) func(t T) bool {
 	}
 }
 
-func anyAggregate[T any](ss ...Spec[T]) func(t T) bool {
-	panicIfEmpty(ss)
+func combineAny[T any](childSpecs ...Spec[T]) Predicate[T] {
+	panicOnEmpty(childSpecs)
 
 	return func(t T) bool {
-		for _, s := range ss {
+		for _, s := range childSpecs {
 			if s.Eval(t) {
 				return true
 			}
@@ -91,8 +89,8 @@ func anyAggregate[T any](ss ...Spec[T]) func(t T) bool {
 	}
 }
 
-func panicIfEmpty[T any](ss []T) {
-	if len(ss) == 0 {
-		panic("not supported. use nilSpec instead")
+func panicOnEmpty[T any](childSpecs []T) {
+	if len(childSpecs) == 0 {
+		panic("no child specs - use nilSpec instead")
 	}
 }
