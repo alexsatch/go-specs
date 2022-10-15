@@ -28,19 +28,21 @@ func TestEval(t *testing.T) {
 
 	t.Run("nil", func(t *testing.T) {
 		sp := specs.New[Employee](nil)
-		require.True(t, sp.Eval(bob))
+
+		assert.True(t, sp.Eval(bob))
 	})
 
 	t.Run("term", func(t *testing.T) {
 		sp := specs.New(Employee.IsLegalAge)
-		require.True(t, sp.Eval(bob))
-		require.False(t, sp.Eval(alice))
+
+		assert.True(t, sp.Eval(bob))
+		assert.False(t, sp.Eval(alice))
 	})
 
 	t.Run("not", func(t *testing.T) {
 		notLegalAge := specs.Not[Employee](specs.New(Employee.IsLegalAge))
 
-		require.True(t, notLegalAge.Eval(alice))
+		assert.True(t, notLegalAge.Eval(alice))
 	})
 
 	t.Run("and", func(t *testing.T) {
@@ -64,20 +66,8 @@ func TestEval(t *testing.T) {
 			isFemale   = specs.New(Employee.IsMale)
 		)
 
-		require.True(t, specs.Any[Employee](isLegalAge, isFemale).Eval(bob))
+		assert.True(t, specs.Any[Employee](isLegalAge, isFemale).Eval(bob))
 	})
-}
-
-func TestAPI(t *testing.T) {
-	bob := Employee{Age: 19, Gender: Male}
-	alice := Employee{Age: 17, Gender: Female}
-
-	sp := specs.
-		New(Employee.IsLegalAge).
-		AndFunc(Employee.IsMale)
-
-	require.True(t, sp.Eval(bob))
-	require.False(t, sp.Eval(alice))
 }
 
 func is30(e Employee) bool { return e.Age == 30 }
@@ -106,7 +96,7 @@ func TestString(t *testing.T) {
 
 	t.Run("is30", func(t *testing.T) {
 		sp := specs.New(is30)
-		require.Equal(t, `github.com/alexsatch/go-specs_test.is30`, sp.String())
+		require.Equal(t, "github.com/alexsatch/go-specs_test.is30", sp.String())
 	})
 
 	t.Run("named", func(t *testing.T) {

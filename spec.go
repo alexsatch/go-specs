@@ -67,13 +67,16 @@ func New[T any](fn Predicate[T]) Spec[T] {
 	return predicateSpec[T]{name: nameOfFunc(fn), eval: fn}
 }
 
+// NewNamed creates a new specification from a given predicate
+// and gives it a name. Useful when a computed name using reflection
+// doesn't fit your needs.
 func NewNamed[T any](name string, fn Predicate[T]) Spec[T] {
-	if name == "" {
-		panic("empty name is not permitted for specs.NewNamed()")
-	}
-
 	if fn == nil {
 		return nilSpec[T]{}
+	}
+
+	if name == "" {
+		panic("empty name is not permitted for specs.NewNamed()")
 	}
 
 	return predicateSpec[T]{name: name, eval: fn}

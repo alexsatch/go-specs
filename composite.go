@@ -36,6 +36,7 @@ func newCompositeSpec[T any](
 	}
 }
 
+// compositeSpecName computes a name for a composite spec.
 func compositeSpecName[T any](name string, childSpecs ...Spec[T]) string {
 	sb := strings.Builder{}
 	_, _ = sb.WriteString(name)
@@ -53,6 +54,8 @@ func compositeSpecName[T any](name string, childSpecs ...Spec[T]) string {
 	return sb.String()
 }
 
+// combineNot creates a predicate that returns a negation
+// of a first element of childSpecs.
 func combineNot[T any](childSpecs ...Spec[T]) Predicate[T] {
 	panicOnEmpty(childSpecs)
 
@@ -61,6 +64,8 @@ func combineNot[T any](childSpecs ...Spec[T]) Predicate[T] {
 	}
 }
 
+// combineAll creates a predicate that evaluates to true iff
+// all the child specs evaluate to true.
 func combineAll[T any](childSpecs ...Spec[T]) Predicate[T] {
 	panicOnEmpty(childSpecs)
 
@@ -75,6 +80,8 @@ func combineAll[T any](childSpecs ...Spec[T]) Predicate[T] {
 	}
 }
 
+// combineAll creates a predicate that evaluates to true iff
+// any child spec evaluates to true.
 func combineAny[T any](childSpecs ...Spec[T]) Predicate[T] {
 	panicOnEmpty(childSpecs)
 
